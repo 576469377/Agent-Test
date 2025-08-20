@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search, CheckSquare, Clock, AlertCircle } from 'lucide-react';
+import { Plus, Search, CheckSquare, Clock, AlertCircle, MoreHorizontal, Trash2, PlayCircle } from 'lucide-react';
 import { taskAPI } from '../../services/api';
 import { Task } from '../../types';
 import toast from 'react-hot-toast';
 import TaskModal from './TaskModal';
 import ConfirmDialog from '../Common/ConfirmDialog';
 import LoadingSpinner from '../Common/LoadingSpinner';
+import Notification from '../Common/Notification';
 
 const TaskManager: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -19,6 +20,12 @@ const TaskManager: React.FC = () => {
     isOpen: false,
     task: null
   });
+  const [selectedTasks, setSelectedTasks] = useState<Set<number>>(new Set());
+  const [bulkActionMode, setBulkActionMode] = useState(false);
+  const [overdueNotification, setOverdueNotification] = useState<{
+    isVisible: boolean;
+    count: number;
+  }>({ isVisible: false, count: 0 });
 
   useEffect(() => {
     fetchTasks();
@@ -27,7 +34,19 @@ const TaskManager: React.FC = () => {
   const fetchTasks = async () => {
     try {
       const response = await taskAPI.getTasks();
-      setTasks(response.data.tasks || []);
+      const fetchedTasks = response.data.tasks || [];
+      setTasks(fetchedTasks);
+      
+      // Check for overdue tasks
+      const now = new Date();
+      const overdueTasks = fetchedTasks.filter(task => 
+        task.status !== 'completed' && 
+        new Date(task.due_date) < now
+      );
+      
+      if (overdueTasks.length > 0) {
+        setOverdueNotification({ isVisible: true, count: overdueTasks.length });
+      }
     } catch (error) {
       toast.error('Failed to fetch tasks');
     } finally {
@@ -82,6 +101,54 @@ const TaskManager: React.FC = () => {
       handleDeleteTask(deleteConfirm.task.id);
     }
     setDeleteConfirm({ isOpen: false, task: null });
+  };
+
+  const toggleTaskSelection = (taskId: number) => {
+    const newSelected = new Set(selectedTasks);
+    if (newSelected.has(taskId)) {
+      newSelected.delete(taskId);
+    } else {
+      newSelected.add(taskId);
+    }
+    setSelectedTasks(newSelected);
+  };
+
+  const selectAllTasks = () => {
+    if (selectedTasks.size === filteredTasks.length) {
+      setSelectedTasks(new Set());
+    } else {
+      setSelectedTasks(new Set(filteredTasks.map(task => task.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedTasks.size === 0) return;
+    
+    try {
+      await Promise.all(Array.from(selectedTasks).map(id => taskAPI.deleteTask(id)));
+      setTasks(prev => prev.filter(task => !selectedTasks.has(task.id)));
+      setSelectedTasks(new Set());
+      setBulkActionMode(false);
+      toast.success(`${selectedTasks.size} tasks deleted successfully!`);
+    } catch (error) {
+      toast.error('Failed to delete some tasks');
+    }
+  };
+
+  const handleBulkStatusUpdate = async (status: 'pending' | 'in-progress' | 'completed') => {
+    if (selectedTasks.size === 0) return;
+    
+    try {
+      await Promise.all(Array.from(selectedTasks).map(id => taskAPI.updateTask(id, { status })));
+      setTasks(prev => prev.map(task => 
+        selectedTasks.has(task.id) ? { ...task, status } : task
+      ));
+      setSelectedTasks(new Set());
+      setBulkActionMode(false);
+      toast.success(`${selectedTasks.size} tasks updated successfully!`);
+    } catch (error) {
+      toast.error('Failed to update some tasks');
+    }
   };
 
   const openCreateModal = () => {
@@ -145,6 +212,10 @@ const TaskManager: React.FC = () => {
     }
   };
 
+  const isTaskOverdue = (task: Task) => {
+    return task.status !== 'completed' && new Date(task.due_date) < new Date();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -189,6 +260,20 @@ const TaskManager: React.FC = () => {
             <option value="in-progress">In Progress</option>
             <option value="completed">Completed</option>
           </select>
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setBulkActionMode(!bulkActionMode)}
+            className={`px-4 py-3 rounded-xl font-medium transition-all flex items-center gap-2 ${
+              bulkActionMode 
+                ? 'bg-orange-500 text-white hover:bg-orange-600' 
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            <MoreHorizontal className="w-5 h-5" />
+            {bulkActionMode ? 'Exit Bulk' : 'Bulk Actions'}
+          </motion.button>
           
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -202,6 +287,55 @@ const TaskManager: React.FC = () => {
         </div>
       </div>
 
+      {/* Bulk Actions Bar */}
+      {bulkActionMode && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-4 mb-6"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 text-sm font-medium text-orange-700 dark:text-orange-400">
+                <input
+                  type="checkbox"
+                  checked={selectedTasks.size === filteredTasks.length && filteredTasks.length > 0}
+                  onChange={selectAllTasks}
+                  className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
+                />
+                Select All ({selectedTasks.size} selected)
+              </label>
+            </div>
+            {selectedTasks.size > 0 && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleBulkStatusUpdate('in-progress')}
+                  className="px-3 py-1 bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
+                >
+                  <PlayCircle className="w-4 h-4" />
+                  Start
+                </button>
+                <button
+                  onClick={() => handleBulkStatusUpdate('completed')}
+                  className="px-3 py-1 bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
+                >
+                  <CheckSquare className="w-4 h-4" />
+                  Complete
+                </button>
+                <button
+                  onClick={handleBulkDelete}
+                  className="px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+
       {/* Task List */}
       <div className="space-y-4">
         {filteredTasks.map((task, index) => (
@@ -210,10 +344,23 @@ const TaskManager: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
-            className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-xl transition-shadow"
-            onClick={() => openEditModal(task)}
+            className={`bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border transition-shadow ${
+              isTaskOverdue(task) 
+                ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/10' 
+                : 'border-gray-200 dark:border-gray-700'
+            } ${!bulkActionMode ? 'cursor-pointer hover:shadow-xl' : ''}`}
+            onClick={() => !bulkActionMode && openEditModal(task)}
           >
             <div className="flex items-start justify-between">
+              {bulkActionMode && (
+                <input
+                  type="checkbox"
+                  checked={selectedTasks.has(task.id)}
+                  onChange={() => toggleTaskSelection(task.id)}
+                  className="mt-1 mr-4 w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              )}
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
                   {getStatusIcon(task.status)}
@@ -228,7 +375,10 @@ const TaskManager: React.FC = () => {
                   {task.description}
                 </p>
                 <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>
+                  <span className={isTaskOverdue(task) ? 'text-red-600 dark:text-red-400 font-medium' : ''}>
+                    Due: {new Date(task.due_date).toLocaleDateString()}
+                    {isTaskOverdue(task) && ' (Overdue)'}
+                  </span>
                   <span>Created: {new Date(task.created_at).toLocaleDateString()}</span>
                 </div>
               </div>
@@ -301,6 +451,16 @@ const TaskManager: React.FC = () => {
         confirmText="Delete"
         cancelText="Cancel"
         type="danger"
+      />
+
+      {/* Overdue Tasks Notification */}
+      <Notification
+        type="warning"
+        title="Overdue Tasks Detected"
+        message={`You have ${overdueNotification.count} task${overdueNotification.count > 1 ? 's' : ''} that ${overdueNotification.count > 1 ? 'are' : 'is'} past ${overdueNotification.count > 1 ? 'their' : 'its'} due date. Consider updating ${overdueNotification.count > 1 ? 'them' : 'it'} or extending the deadline.`}
+        isVisible={overdueNotification.isVisible}
+        onClose={() => setOverdueNotification({ isVisible: false, count: 0 })}
+        autoClose={false}
       />
     </div>
   );
