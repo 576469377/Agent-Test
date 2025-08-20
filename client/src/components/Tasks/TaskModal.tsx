@@ -29,6 +29,21 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, task }) 
     if (!formData.title.trim()) {
       newErrors.title = 'Title is required';
     }
+    if (formData.title.trim().length < 3) {
+      newErrors.title = 'Title must be at least 3 characters long';
+    }
+    if (formData.title.trim().length > 100) {
+      newErrors.title = 'Title must be less than 100 characters';
+    }
+    if (!formData.description.trim()) {
+      newErrors.description = 'Description is required';
+    }
+    if (formData.description.trim().length < 10) {
+      newErrors.description = 'Description must be at least 10 characters long';
+    }
+    if (formData.due_date && new Date(formData.due_date) < new Date()) {
+      newErrors.due_date = 'Due date cannot be in the past';
+    }
     
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
