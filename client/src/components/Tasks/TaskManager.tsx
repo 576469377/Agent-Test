@@ -4,12 +4,15 @@ import { Plus, Search, CheckSquare, Clock, AlertCircle } from 'lucide-react';
 import { taskAPI } from '../../services/api';
 import { Task } from '../../types';
 import toast from 'react-hot-toast';
+import TaskModal from './TaskModal';
 
 const TaskManager: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'in-progress' | 'completed'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   useEffect(() => {
     fetchTasks();
@@ -26,24 +29,87 @@ const TaskManager: React.FC = () => {
     }
   };
 
+  const handleCreateTask = async (taskData: Partial<Task>) => {
+    try {
+      const response = await taskAPI.createTask(taskData);
+      if (response.data.success) {
+        setTasks(prev => [response.data.task, ...prev]);
+        toast.success('Task created successfully!');
+      }
+    } catch (error) {
+      toast.error('Failed to create task');
+    }
+  };
+
+  const handleUpdateTask = async (taskData: Partial<Task>) => {
+    if (!editingTask) return;
+    
+    try {
+      const response = await taskAPI.updateTask(editingTask.id, taskData);
+      if (response.data.success) {
+        setTasks(prev => prev.map(task => 
+          task.id === editingTask.id ? response.data.task : task
+        ));
+        toast.success('Task updated successfully!');
+      }
+    } catch (error) {
+      toast.error('Failed to update task');
+    }
+  };
+
+  const handleDeleteTask = async (id: number) => {
+    try {
+      await taskAPI.deleteTask(id);
+      setTasks(prev => prev.filter(task => task.id !== id));
+      toast.success('Task deleted successfully!');
+    } catch (error) {
+      toast.error('Failed to delete task');
+    }
+  };
+
+  const openCreateModal = () => {
+    setEditingTask(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (task: Task) => {
+    setEditingTask(task);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingTask(null);
+  };
+
+  const handleModalSave = (taskData: Partial<Task>) => {
+    if (editingTask) {
+      handleUpdateTask(taskData);
+    } else {
+      handleCreateTask(taskData);
+    }
+  };
+
+  const updateTaskStatus = async (id: number, status: 'pending' | 'in-progress' | 'completed') => {
+    try {
+      const response = await taskAPI.updateTask(id, { status });
+      if (response.data.success) {
+        setTasks(prev => prev.map(task => 
+          task.id === id ? { ...task, status } : task
+        ));
+        toast.success('Task status updated!');
+      }
+    } catch (error) {
+      toast.error('Failed to update task status');
+    }
+  };
+
   const filteredTasks = tasks.filter(task => {
     const matchesFilter = filter === 'all' || task.status === filter;
     const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          task.description.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesFilter && matchesSearch;
   });
-
-  const updateTaskStatus = async (taskId: number, newStatus: Task['status']) => {
-    try {
-      await taskAPI.updateTask(taskId, { status: newStatus });
-      setTasks(tasks.map(task => 
-        task.id === taskId ? { ...task, status: newStatus } : task
-      ));
-      toast.success('Task updated successfully!');
-    } catch (error) {
-      toast.error('Failed to update task');
-    }
-  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -110,7 +176,7 @@ const TaskManager: React.FC = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => {/* TODO: Add modal for creating tasks */}}
+            onClick={openCreateModal}
             className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl font-medium hover:from-blue-600 hover:to-purple-600 transition-all shadow-lg flex items-center gap-2"
           >
             <Plus className="w-5 h-5" />
@@ -127,7 +193,8 @@ const TaskManager: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
-            className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700"
+            className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-xl transition-shadow"
+            onClick={() => openEditModal(task)}
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
@@ -154,7 +221,10 @@ const TaskManager: React.FC = () => {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => updateTaskStatus(task.id, task.status === 'pending' ? 'in-progress' : 'completed')}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      updateTaskStatus(task.id, task.status === 'pending' ? 'in-progress' : 'completed');
+                    }}
                     className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
                       task.status === 'pending'
                         ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400'
@@ -164,6 +234,17 @@ const TaskManager: React.FC = () => {
                     {task.status === 'pending' ? 'Start' : 'Complete'}
                   </motion.button>
                 )}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteTask(task.id);
+                  }}
+                  className="px-3 py-1 rounded-lg text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 transition-colors"
+                >
+                  Delete
+                </motion.button>
               </div>
             </div>
           </motion.div>
@@ -184,6 +265,14 @@ const TaskManager: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Task Modal */}
+      <TaskModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        onSave={handleModalSave}
+        task={editingTask}
+      />
     </div>
   );
 };
