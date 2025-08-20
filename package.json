@@ -1,0 +1,28 @@
+{
+  "name": "smart-personal-assistant",
+  "version": "1.0.0",
+  "description": "A fancy Smart Personal Assistant Dashboard with modern web technologies",
+  "main": "server/index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
+    "server:dev": "cd server && npm run dev",
+    "client:dev": "cd client && npm start",
+    "build": "cd client && npm run build",
+    "start": "cd server && npm start",
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "dashboard",
+    "assistant",
+    "react",
+    "node",
+    "fancy",
+    "modern"
+  ],
+  "author": "AI Agent",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  }
+}
