@@ -1,10 +1,20 @@
-# Getting Started with Create React App
+# Smart Personal Assistant - Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This is the React frontend application for the Smart Personal Assistant Dashboard, built with TypeScript and modern web technologies.
+
+## Technologies Used
+
+- **React** with TypeScript
+- **Framer Motion** for animations
+- **Lucide React** for icons  
+- **Recharts** for data visualization
+- **React Hot Toast** for notifications
+- **Socket.IO Client** for real-time features
+- **Axios** for API communication
 
 ## Available Scripts
 
-In the project directory, you can run:
+In the client directory, you can run:
 
 ### `npm start`
 
