@@ -49,27 +49,28 @@ A **fancy**, modern full-stack web application that serves as your intelligent p
 ## 📁 Project Structure
 
 ```
-smart-personal-assistant/
+Agent-Test/
 ├── client/                 # React frontend
 │   ├── src/
 │   │   ├── components/     # React components
-│   │   │   ├── Layout/     # Header, Sidebar
-│   │   │   ├── Dashboard/  # Main dashboard
-│   │   │   ├── Tasks/      # Task management
-│   │   │   ├── Chat/       # AI chat interface
-│   │   │   ├── Weather/    # Weather widgets
 │   │   │   ├── Analytics/  # Data visualization
-│   │   │   └── Settings/   # User preferences
-│   │   ├── services/       # API services
+│   │   │   ├── Chat/       # AI chat interface
+│   │   │   ├── Common/     # Shared components
+│   │   │   ├── Dashboard/  # Main dashboard
+│   │   │   ├── Layout/     # Header, Sidebar
+│   │   │   ├── Settings/   # User preferences
+│   │   │   ├── Tasks/      # Task management
+│   │   │   └── Weather/    # Weather widgets
 │   │   ├── context/        # React context
+│   │   ├── services/       # API services
 │   │   └── types/          # TypeScript types
 │   └── package.json
 ├── server/                 # Express backend
 │   ├── database/           # Database setup
 │   ├── routes/             # API routes
+│   ├── .env.example       # Environment template
 │   ├── index.js           # Main server file
 │   └── package.json
-├── docs/                   # Documentation
 ├── package.json           # Root package.json
 └── README.md              # This file
 ```
@@ -85,7 +86,7 @@ smart-personal-assistant/
 1. **Clone the repository**
 ```bash
 git clone <repository-url>
-cd smart-personal-assistant
+cd Agent-Test
 ```
 
 2. **Install dependencies**

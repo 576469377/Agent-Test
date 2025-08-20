@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BarChart3, TrendingUp, Activity, Calendar, RefreshCw } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { analyticsAPI } from '../../services/api';
@@ -11,11 +11,7 @@ const Analytics: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('7d');
 
-  useEffect(() => {
-    fetchAnalyticsData();
-  }, [period]);
-
-  const fetchAnalyticsData = async () => {
+  const fetchAnalyticsData = useCallback(async () => {
     setLoading(true);
     try {
       const [overviewRes, trendsRes, performanceRes] = await Promise.all([
@@ -33,9 +29,11 @@ const Analytics: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [period]);
 
-  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
+  useEffect(() => {
+    fetchAnalyticsData();
+  }, [fetchAnalyticsData]);
 
   const priorityData = trends.length > 0 ? [
     { name: 'High', value: trends.filter(t => t.priority === 'high').length, color: '#EF4444' },
