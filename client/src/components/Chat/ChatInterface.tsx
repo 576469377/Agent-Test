@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Bot, User, Trash2, Download } from 'lucide-react';
+import { Send, Bot, User, Trash2, Download, MessageCircle, Loader } from 'lucide-react';
 import { chatAPI } from '../../services/api';
 import { ChatMessage } from '../../types';
 import { useAppContext } from '../../context/AppContext';
+import LoadingSpinner from '../Common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
 const ChatInterface: React.FC = () => {
@@ -42,30 +43,44 @@ const ChatInterface: React.FC = () => {
   };
 
   const sendMessage = async () => {
-    if (!inputMessage.trim()) return;
+    if (!inputMessage.trim() || typing) return;
 
     const userMessage: ChatMessage = {
       id: Date.now(),
-      message: inputMessage,
+      message: inputMessage.trim(),
       type: 'user',
       timestamp: new Date().toISOString(),
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const messageText = inputMessage.trim();
     setInputMessage('');
     setTyping(true);
 
     try {
       if (socket) {
-        socket.emit('chat-message', { message: inputMessage });
+        socket.emit('chat-message', { message: messageText });
       } else {
         // Fallback to API if socket is not available
-        const response = await chatAPI.sendMessage(inputMessage);
-        setMessages(prev => [...prev, response.data.aiResponse]);
+        const response = await chatAPI.sendMessage(messageText);
+        if (response.data.success) {
+          setMessages(prev => [...prev, response.data.aiResponse]);
+        }
+        setTyping(false);
       }
     } catch (error) {
-      toast.error('Failed to send message');
+      console.error('Failed to send message:', error);
+      toast.error('Failed to send message. Please try again.');
       setTyping(false);
+      
+      // Add error message to chat
+      const errorMessage: ChatMessage = {
+        id: Date.now() + 1,
+        message: 'Sorry, I encountered an error processing your message. Please try again.',
+        type: 'ai',
+        timestamp: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
     }
   };
 
@@ -123,11 +138,11 @@ const ChatInterface: React.FC = () => {
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {loading ? (
           <div className="flex justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            <LoadingSpinner size="md" text="Loading chat history..." />
           </div>
         ) : messages.length === 0 ? (
           <div className="text-center py-12">
-            <Bot className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+            <MessageCircle className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400 mb-2">
               Start a conversation
             </h3>
@@ -175,19 +190,23 @@ const ChatInterface: React.FC = () => {
 
         {typing && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
             className="flex justify-start"
           >
             <div className="flex items-start space-x-3 max-w-xs lg:max-w-md">
               <div className="w-8 h-8 rounded-full bg-gradient-to-r from-green-500 to-teal-500 flex items-center justify-center">
-                <Bot className="w-4 h-4 text-white" />
+                <Loader className="w-4 h-4 text-white animate-spin" />
               </div>
               <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="flex items-center space-x-2">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  </div>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">AI is thinking...</span>
                 </div>
               </div>
             </div>

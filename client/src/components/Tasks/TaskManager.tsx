@@ -5,6 +5,8 @@ import { taskAPI } from '../../services/api';
 import { Task } from '../../types';
 import toast from 'react-hot-toast';
 import TaskModal from './TaskModal';
+import ConfirmDialog from '../Common/ConfirmDialog';
+import LoadingSpinner from '../Common/LoadingSpinner';
 
 const TaskManager: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -13,6 +15,10 @@ const TaskManager: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; task: Task | null }>({
+    isOpen: false,
+    task: null
+  });
 
   useEffect(() => {
     fetchTasks();
@@ -65,6 +71,17 @@ const TaskManager: React.FC = () => {
     } catch (error) {
       toast.error('Failed to delete task');
     }
+  };
+
+  const confirmDeleteTask = (task: Task) => {
+    setDeleteConfirm({ isOpen: true, task });
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteConfirm.task) {
+      handleDeleteTask(deleteConfirm.task.id);
+    }
+    setDeleteConfirm({ isOpen: false, task: null });
   };
 
   const openCreateModal = () => {
@@ -131,7 +148,7 @@ const TaskManager: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <LoadingSpinner size="lg" text="Loading tasks..." />
       </div>
     );
   }
@@ -239,7 +256,7 @@ const TaskManager: React.FC = () => {
                   whileTap={{ scale: 0.95 }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDeleteTask(task.id);
+                    confirmDeleteTask(task);
                   }}
                   className="px-3 py-1 rounded-lg text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 transition-colors"
                 >
@@ -272,6 +289,18 @@ const TaskManager: React.FC = () => {
         onClose={closeModal}
         onSave={handleModalSave}
         task={editingTask}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, task: null })}
+        onConfirm={handleConfirmDelete}
+        title="Delete Task"
+        message={`Are you sure you want to delete "${deleteConfirm.task?.title}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
       />
     </div>
   );
