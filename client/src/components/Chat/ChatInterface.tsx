@@ -159,7 +159,7 @@ const ChatInterface: React.FC = () => {
               transition={{ delay: index * 0.1 }}
               className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              <div className={`flex items-start space-x-3 max-w-xs lg:max-w-md ${message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
+              <div className={`flex items-start space-x-3 ${message.type === 'user' ? 'max-w-xs lg:max-w-md flex-row-reverse space-x-reverse' : 'max-w-sm lg:max-w-2xl'}`}>
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                   message.type === 'user' 
                     ? 'bg-gradient-to-r from-blue-500 to-purple-500' 
@@ -195,7 +195,7 @@ const ChatInterface: React.FC = () => {
             exit={{ opacity: 0, y: -10 }}
             className="flex justify-start"
           >
-            <div className="flex items-start space-x-3 max-w-xs lg:max-w-md">
+            <div className="flex items-start space-x-3 max-w-sm lg:max-w-2xl">
               <div className="w-8 h-8 rounded-full bg-gradient-to-r from-green-500 to-teal-500 flex items-center justify-center">
                 <Loader className="w-4 h-4 text-white animate-spin" />
               </div>
